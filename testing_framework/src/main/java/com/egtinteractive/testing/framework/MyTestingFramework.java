@@ -1,5 +1,13 @@
 package com.egtinteractive.testing.framework;
 
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.LOG;
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.getMapWithAnnotatedMethods;
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.getMethodsCount;
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.getSpecificMethods;
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.invokeWithDataProvider;
+import static com.egtinteractive.testing.framework.TestingFrameworkUtils.theExceptionIsExpected;
+
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,11 +20,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import static com.egtinteractive.testing.framework.TestingFrameworkUtils.*;
-
 public final class MyTestingFramework implements TestingFramework {
 
-    private final List<Class<?>> classList;
     /**
      * <p>
      * The map contains maps with all the methods specified with the given
@@ -35,41 +40,62 @@ public final class MyTestingFramework implements TestingFramework {
      */
     private final Map<String, Map<String, List<Method>>> methods;
     private final Map<String, List<Method>> results;
+    private final List<Class<?>> classList;
 
-    public MyTestingFramework(final List<Class<?>> classList) {
-	this.methods = new HashMap<>();
-	this.methods.put(TESTS, getMapWithAnnotatedMethods(classList, Test.class));
-	this.methods.put(BEFORE_TESTS, getMapWithAnnotatedMethods(classList, BeforeTest.class));
-	this.methods.put(AFTER_TESTS, getMapWithAnnotatedMethods(classList, AfterTest.class));
-	this.methods.put(DATA_PROVIDERS, getMapWithAnnotatedMethods(classList, DataProvider.class));
-	this.results = new HashMap<>();
-	this.classList = classList;
+    public static final Class<Test> TESTS = Test.class;
+    public static final Class<BeforeTest> BEFORE_TESTS = BeforeTest.class;
+    public static final Class<AfterTest> AFTER_TESTS = AfterTest.class;
+    public static final Class<DataProvider> DATA_PROVIDERS = DataProvider.class;
+
+    public MyTestingFramework(final Builder builder) {
+	this.methods = builder.methods;
+	this.results = builder.results;
+	this.classList = builder.classList;
+    }
+
+    public static class Builder {
+	private final List<Class<?>> classList;
+	private final Map<String, List<Method>> results = new HashMap<>();
+	private final Map<String, Map<String, List<Method>>> methods = new HashMap<>();
+
+	public Builder(final List<Class<?>> classList) {
+	    this.classList = classList;
+	    methods.put(TESTS.getName(), getMapWithAnnotatedMethods(classList, TESTS));
+	    methods.put(BEFORE_TESTS.getName(), getMapWithAnnotatedMethods(classList, BEFORE_TESTS));
+	    methods.put(AFTER_TESTS.getName(), getMapWithAnnotatedMethods(classList, BEFORE_TESTS));
+	    methods.put(DATA_PROVIDERS.getName(), getMapWithAnnotatedMethods(classList, DATA_PROVIDERS));
+	}
+
+	public Builder addAnnotation(final Class<? extends Annotation> cls) {
+	    methods.put(cls.getName(), getMapWithAnnotatedMethods(this.classList, cls));
+	    return this;
+	}
     }
 
     @Override
     public void run() {
-	if (getMethodsCount(methods.get(TESTS)) == 0) {
-	    log.printResult(results);
+	if (getMethodsCount(methods.get(TESTS.getName())) == 0) {
+	    LOG.printResult(results);
 	    return;
 	}
 	for (Class<?> cls : classList) {
-	    if (getMethodsCount(methods.get(BEFORE_TESTS)) != 0) {
+	    if (getMethodsCount(methods.get(BEFORE_TESTS.getName())) != 0) {
 		try {
-		    runBeforeMethods(cls, getSpecificMethods(methods, BEFORE_TESTS, cls));
+		    runBeforeMethods(cls, getSpecificMethods(methods, BEFORE_TESTS.getName(), cls));
 		} catch (final Exception e) {
-		    log.printException(e);
+		    LOG.printException(e);
 		    increaseResults("SKIPPED", cls);
 		    continue;
 		}
-		runTestMethods(cls, getSpecificMethods(methods, TESTS, cls));
-		runAfterMethods(cls, getSpecificMethods(methods, AFTER_TESTS, cls));
 	    }
+	    runTestMethods(cls, getSpecificMethods(methods, TESTS.getName(), cls));
+	    runAfterMethods(cls, getSpecificMethods(methods, AFTER_TESTS.getName(), cls));
 	}
-	log.printResult(results);
+	LOG.printResult(results);
     }
 
     private void increaseResults(final String key, final Class<?> cls) {
-	this.results.put(key, getSpecificMethods(methods, TESTS, cls));
+	this.results.put(key, getSpecificMethods(methods, TESTS.getName(), cls));
     }
 
     private void increaseResults(final String key, final List<Method> methods) {
@@ -110,7 +136,7 @@ public final class MyTestingFramework implements TestingFramework {
 		if (theExceptionIsExpected(e, currentMethod)) {
 		    successfulTests.add(currentMethod);
 		} else {
-		    log.printException(e);
+		    LOG.printException(e);
 		    failedTests.add(currentMethod);
 		}
 	    }
@@ -120,14 +146,16 @@ public final class MyTestingFramework implements TestingFramework {
     }
 
     private void runAfterMethods(final Class<?> cls, final List<Method> afterTestMethods) {
-	for (Method currentMethod : afterTestMethods) {
-	    try {
-		final Object obj = cls.newInstance();
-		currentMethod.setAccessible(true);
-		currentMethod.invoke(obj, (Object[]) null);
-	    } catch (final Exception e) {
-		log.printException(e);
+	if (Objects.nonNull(afterTestMethods))
+	    for (Method currentMethod : afterTestMethods) {
+		try {
+		    //TODO WARNING
+		    final Object obj = cls.newInstance();
+		    currentMethod.setAccessible(true);
+		    currentMethod.invoke(obj, (Object[]) null);
+		} catch (final Exception e) {
+		    LOG.printException(e);
+		}
 	    }
-	}
     }
 }

@@ -1,6 +1,5 @@
 package com.egtinteractive.testing.framework;
 
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
@@ -10,19 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.testng.annotations.AfterTest;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import org.testng.internal.reflect.MethodMatcherException;
 
 public final class TestingFrameworkUtils {
 
-    public static final String TESTS = Test.class.getName();
-    public static final String BEFORE_TESTS = BeforeTest.class.getName();
-    public static final String AFTER_TESTS = AfterTest.class.getName();
-    public static final String DATA_PROVIDERS = DataProvider.class.getName();
-    public static final Logger log = new Logger();
+    public static final Class<?> DATA_PROVIDERS = DataProvider.class;
+    public static final Logger LOG = new Logger();
 
     public static boolean hasExceptionExpected(final Method method) {
 	final Test test = method.getAnnotation(Test.class);
@@ -43,8 +37,10 @@ public final class TestingFrameworkUtils {
 
     public static int getMethodsCount(final Map<String, List<Method>> map) {
 	int size = 0;
-	for (List<Method> method : map.values()) {
-	    size += method.size();
+	if (Objects.nonNull(map)) {
+	    for (List<Method> method : map.values()) {
+		size += method.size();
+	    }
 	}
 	return size;
     }
@@ -80,12 +76,14 @@ public final class TestingFrameworkUtils {
 	    if (method.getParameterCount() == 0) {
 		return dataProvider;
 	    } else {
-		log.throwDataProviderException(method);
+		LOG.throwDataProviderException(method);
 	    }
 	}
 
-	final List<Method> dataProviders = getSpecificMethods(methods, DATA_PROVIDERS, cls);
+	final List<Method> dataProviders = getSpecificMethods(methods, DATA_PROVIDERS.getName(), cls);
+
 	final String dataProviderName = method.getAnnotation(Test.class).dataProvider();
+
 	for (Method currentDataProvider : dataProviders) {
 	    if (currentDataProvider.getName().equals(dataProviderName)) {
 		dataProvider = currentDataProvider;
@@ -93,21 +91,20 @@ public final class TestingFrameworkUtils {
 	    }
 	}
 	if (Objects.isNull(dataProvider)) {
-	    log.throwDataProviderException(method, " has not available data provider");
+	    LOG.throwDataProviderException(method, " has not available data provider");
 	}
 
 	final Type[] types = method.getParameterTypes();
 	final Object[][] returnValues = (Object[][]) dataProvider.invoke(cls.newInstance(), (Object[]) null);
 	for (int i = 0; i < returnValues.length; i++) {
 	    if (types.length != returnValues[0].length) {
-		log.throwDataProviderException(method);
+		LOG.throwDataProviderException(method);
 	    }
 	    for (int j = 0; j < returnValues[i].length; j++) {
 		try {
-
-		    method.invoke(cls.newInstance(), returnValues[i][j]);
+		    method.invoke(cls.newInstance(), returnValues[i]);
 		} catch (final MethodMatcherException e) {
-		    log.printException(e);
+		    LOG.printException(e);
 		}
 	    }
 	}
@@ -129,6 +126,7 @@ public final class TestingFrameworkUtils {
 	    final Class<? extends Annotation> annotation) {
 	final Map<String, List<Method>> testMethods = new HashMap<>();
 	for (Class<?> cls : clsList) {
+
 	    final Method[] methods = cls.getDeclaredMethods();
 	    final List<Method> methodList = new ArrayList<>();
 	    for (Method method : methods) {
