@@ -1,5 +1,5 @@
 package com.egtinteractive.testing.framework;
 
-interface TestingFramework {
+public interface TestingFramework {
     void run();
 }

@@ -1,8 +1,8 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
 <suite name="Testing_framework">
 	<test name="PackageExampleTestPrimitivesAndStrings">
-		<packages>
-			<package name="com.egtinteractive.testing.framework.tests.runtests" />
-		</packages>
+		<classes>
+			<class name="com.egtinteractive.testing.framework.tests.runtests.RunTests"/>
+		</classes>
 	</test>
 </suite>
