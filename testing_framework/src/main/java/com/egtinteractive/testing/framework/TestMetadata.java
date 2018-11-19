@@ -15,6 +15,7 @@ import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import org.testng.internal.reflect.MethodMatcherException;
 
 public final class TestMetadata {
 
@@ -26,41 +27,42 @@ public final class TestMetadata {
     private final Map<Method, List<Class<? extends Throwable>>> expectedException = new HashMap<>();
 
     private final Map<String, Method> dataProviderMap;
+    
     private static final Map<Result, List<String>> RESULT = new HashMap<>();
     public static final Map<Result, List<String>> RESULT_VIEW = Collections.unmodifiableMap(RESULT);
 
     private static final Map<Method, Class<? extends Throwable>> ACTUAL_EXCEPTION = new HashMap<>();
-    public static final Map<Method, Class<? extends Throwable>> ACTUAL_EXCEPTION_VIEW = Collections
+    private static final Map<Method, Class<? extends Throwable>> ACTUAL_EXCEPTION_VIEW = Collections
 	    .unmodifiableMap(ACTUAL_EXCEPTION);
 
     @SuppressWarnings("unchecked")
     public TestMetadata(final Class<?> cls) {
-	dataProviderMap = Collections.unmodifiableMap(getMapWithAnnotatedMethods(cls, DataProvider.class));
-	beforeTestList = Collections
+	this.dataProviderMap = Collections.unmodifiableMap(getMapWithAnnotatedMethods(cls, DataProvider.class));
+	this.beforeTestList = Collections
 		.unmodifiableList(new ArrayList<>(getListWithAnnotatedMethods(cls, BeforeTest.class)));
-	afterTestList = Collections
+	this.afterTestList = Collections
 		.unmodifiableList(new ArrayList<>(getListWithAnnotatedMethods(cls, AfterTest.class)));
-	testList = Collections.unmodifiableList(new ArrayList<>(getListWithAnnotatedMethods(cls, Test.class)));
-	for (Method method : testList) {
-	    expectedException.put(method, Arrays.asList(method.getAnnotation(Test.class).expectedExceptions()));
+	this.testList = Collections.unmodifiableList(new ArrayList<>(getListWithAnnotatedMethods(cls, Test.class)));
+	for (Method method : this.testList) {
+	    this.expectedException.put(method, Arrays.asList(method.getAnnotation(Test.class).expectedExceptions()));
 	}
-	expectedExceptionView = Collections.unmodifiableMap(expectedException);
+	this.expectedExceptionView = Collections.unmodifiableMap(this.expectedException);
     }
 
     public List<Method> getBeforeTests() {
-	return beforeTestList;
+	return this.beforeTestList;
     }
 
     public List<Method> getTests() {
-	return testList;
+	return this.testList;
     }
 
     public List<Method> getAfterTests() {
-	return afterTestList;
+	return this.afterTestList;
     }
 
     public Map<Method, List<Class<? extends Throwable>>> getExpectedExceptions() {
-	return expectedExceptionView;
+	return this.expectedExceptionView;
     }
 
     public Map<Method, Class<? extends Throwable>> getActualException() {
@@ -72,27 +74,31 @@ public final class TestMetadata {
     }
 
     public Map<String, Method> getDataProviders() {
-	return dataProviderMap;
+	return this.dataProviderMap;
     }
 
     public static void addException(final Method method, final Class<? extends Throwable> exception) {
 	ACTUAL_EXCEPTION.put(method, exception);
     }
 
-    public void addResult(final Result key, final List<String> methods) {
-	if (RESULT.get(key) == null) {
-	    final List<String> methodNames = new ArrayList<>();
-	    for (String method : methods) {
-		methodNames.add(method);
-	    }
-	    RESULT.put(key, methodNames);
+    public void addResult(final Result result, final List<String> methods) {
+	if (RESULT.get(result) == null) {
+	    RESULT.put(result, new ArrayList<>(methods));
 	} else {
-	    final List<String> methodNames = RESULT.get(key);
-	    for (String method : methods) {
-		methodNames.add(method);
-	    }
-	    RESULT.put(key, methodNames);
+	    final List<String> methodNames = RESULT.get(result);
+	    methodNames.addAll(methods);
+	    RESULT.put(result, methodNames);
 	}
+    }
+
+    public static boolean isExceptionExpected(final Method method, final TestMetadata testMetadata) {
+	final List<Class<? extends Throwable>> expectedExceptions = testMetadata.getExpectedExceptions().get(method);
+	final Class<? extends Throwable> actualException = testMetadata.getActualException().get(method);
+	return expectedExceptions.contains(actualException) && dataProviderMatches(actualException);
+    }
+
+    private static boolean dataProviderMatches(final Class<? extends Throwable> actualException) {
+	return MethodMatcherException.class != actualException;
     }
 
 }

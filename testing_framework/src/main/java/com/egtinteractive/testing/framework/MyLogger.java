@@ -12,12 +12,14 @@ import org.testng.internal.reflect.MethodMatcherException;
 
 public final class MyLogger implements Logger {
 
+    @Override
     public void printException(final Throwable e) {
 	if (e.getCause() != null) {
 	    e.getCause().printStackTrace();
 	}
     }
 
+    @Override
     public void doesntMeetExpectationsException(final List<Class<? extends Throwable>> expected,
 	    final Class<? extends Throwable> actualException, final Method method) {
 	final StringBuilder sb = new StringBuilder();
@@ -31,6 +33,7 @@ public final class MyLogger implements Logger {
 	System.out.println(sb.toString());
     }
 
+    @Override
     public void printResult(final Map<Result, List<String>> results) {
 	final StringBuilder sb = new StringBuilder();
 	for (Result result : results.keySet()) {
@@ -57,11 +60,13 @@ public final class MyLogger implements Logger {
 	System.out.println(sb);
     }
 
+    @Override
     public void throwDataProviderException(final Method method) {
 	throw new MethodMatcherException(
 		"Data provider mismatch" + System.lineSeparator() + "method:" + method.getName());
     }
 
+    @Override
     public void throwDataProviderException(final Method method, final String message) {
 	throw new MethodMatcherException("method: " + method.getName() + message);
     }

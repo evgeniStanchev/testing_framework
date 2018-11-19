@@ -40,9 +40,8 @@ public final class TestingFrameworkUtils {
 		method.invoke(obj, (Object[]) null);
 		successfulTests.add(method.getName());
 		return;
-	    } else {
-		LOG.throwDataProviderException(method);
 	    }
+	    LOG.throwDataProviderException(method);
 	}
 	final String dataProviderName = method.getAnnotation(Test.class).dataProvider();
 	final Method dataProvider = dataProviders.get(dataProviderName);
@@ -97,6 +96,6 @@ public final class TestingFrameworkUtils {
 
     private static boolean hasDataProvider(final Method method) {
 	final Test test = method.getAnnotation(Test.class);
-	return test.dataProvider().equals("") ? false : true;
+	return test.dataProvider().equals("") ? false : true; //$NON-NLS-1$
     }
 }

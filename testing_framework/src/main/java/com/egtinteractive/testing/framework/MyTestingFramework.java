@@ -5,6 +5,7 @@ import static com.egtinteractive.testing.framework.Result.PASSED;
 import static com.egtinteractive.testing.framework.Result.SKIPPED;
 import static com.egtinteractive.testing.framework.TestMetadata.RESULT_VIEW;
 import static com.egtinteractive.testing.framework.TestMetadata.addException;
+import static com.egtinteractive.testing.framework.TestMetadata.isExceptionExpected;
 import static com.egtinteractive.testing.framework.TestingFrameworkUtils.LOG;
 import static com.egtinteractive.testing.framework.TestingFrameworkUtils.hasExceptionExpected;
 import static com.egtinteractive.testing.framework.TestingFrameworkUtils.invokeWithDataProvider;
@@ -18,24 +19,24 @@ public final class MyTestingFramework implements TestingFramework {
 
     private final List<Class<?>> clsList;
     private final ClassResults classResults;
-
-    public ClassResults getClassResults() {
-	return classResults;
-    }
+    private final Logger logger;
 
     public MyTestingFramework(final List<Class<?>> clsList) {
 	this.clsList = clsList;
 	this.classResults = new ClassResults();
+	this.logger = new MyLogger();
     }
 
-    @SuppressWarnings("unused")
-    private List<Class<?>> getList() {
-	return this.clsList;
+    public MyTestingFramework(final List<Class<?>> clsList, Logger logger) {
+	this.clsList = clsList;
+	this.classResults = new ClassResults();
+	this.logger = logger;
     }
 
     @Override
     public void run() {
-	for (Class<?> cls : clsList) {
+
+	for (Class<?> cls : this.clsList) {
 	    for (Class<?> currentCls = cls; currentCls.getSuperclass() != null; currentCls = currentCls
 		    .getSuperclass()) {
 		final TestMetadata testMetadata = new TestMetadata(currentCls);
@@ -62,18 +63,17 @@ public final class MyTestingFramework implements TestingFramework {
 	    return;
 	}
 	if (testMetadata.getBeforeTests().size() != 0) {
-	    runBeforeMethods(cls, testMetadata.getBeforeTests(), obj);
+	    runBeforeMethods(testMetadata.getBeforeTests(), obj);
 	}
 	if (testMetadata.getTests().size() != 0) {
 	    runTestMethods(cls, testMetadata.getTests(), testMetadata, obj);
 	}
 	if (testMetadata.getAfterTests().size() != 0) {
-	    runAfterMethods(cls, testMetadata.getAfterTests(), obj);
+	    runAfterMethods(testMetadata.getAfterTests(), obj);
 	}
     }
 
-    private void runBeforeMethods(final Class<?> cls, final List<Method> beforeTests, final Object obj)
-	    throws Exception {
+    private void runBeforeMethods(final List<Method> beforeTests, final Object obj) throws Exception {
 	for (Method currentMethod : beforeTests) {
 	    currentMethod.setAccessible(true);
 	    currentMethod.invoke(obj, (Object[]) null);
@@ -97,8 +97,8 @@ public final class MyTestingFramework implements TestingFramework {
 		}
 		addException(currentMethod, exceptionCause);
 		if (hasExceptionExpected(currentMethod)) {
-		    if (testMetadata.getExpectedExceptions().get(currentMethod)
-			    .contains((testMetadata.getActualException()))) {
+		    if (isExceptionExpected(currentMethod, testMetadata)) {
+			testMetadata.getActualException().get(currentMethod);
 			successfulTests.add(currentMethod.getName());
 		    } else {
 			failedTests.add(currentMethod.getName());
@@ -114,12 +114,12 @@ public final class MyTestingFramework implements TestingFramework {
 	testMetadata.addResult(PASSED, successfulTests);
 	testMetadata.addResult(FAILED, failedTests);
 	testMetadata.addResult(SKIPPED, skippedTests);
-	classResults.addResults(cls, PASSED, successfulTests);
-	classResults.addResults(cls, FAILED, failedTests);
-	classResults.addResults(cls, SKIPPED, skippedTests);
+	this.classResults.addResults(cls, PASSED, successfulTests);
+	this.classResults.addResults(cls, FAILED, failedTests);
+	this.classResults.addResults(cls, SKIPPED, skippedTests);
     }
 
-    private void runAfterMethods(final Class<?> cls, final List<Method> afterMethods, final Object obj) {
+    private void runAfterMethods(final List<Method> afterMethods, final Object obj) {
 	if (afterMethods != null) {
 	    for (Method currentMethod : afterMethods) {
 		try {
@@ -130,5 +130,9 @@ public final class MyTestingFramework implements TestingFramework {
 		}
 	    }
 	}
+    }
+
+    public ClassResults getClassResults() {
+	return this.classResults;
     }
 }

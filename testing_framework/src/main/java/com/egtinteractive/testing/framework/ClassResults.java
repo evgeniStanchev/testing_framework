@@ -9,22 +9,23 @@ public final class ClassResults {
     private final Map<Class<?>, Map<Result, List<String>>> results = new HashMap<>();
 
     public void addResults(final Class<?> cls, final Result result, final List<String> methodNames) {
-	if (!results.containsKey(cls)) {
+	if (!this.results.containsKey(cls)) {
 	    final Map<Result, List<String>> classMethods = new HashMap<>();
 	    classMethods.put(result, methodNames);
-	    results.put(cls, classMethods);
+	    this.results.put(cls, classMethods);
 	} else {
-	    if (!results.get(cls).containsKey(result)) {
-		results.get(cls).put(result, methodNames);
+	    if (!this.results.get(cls).containsKey(result)) {
+		this.results.get(cls).put(result, methodNames);
 	    } else {
-		final List<String> oldMethods = results.get(cls).get(result);
+		final List<String> oldMethods = this.results.get(cls).get(result);
 		oldMethods.addAll(methodNames);
-		results.get(cls).put(result, oldMethods);
+		this.results.get(cls).put(result, oldMethods);
 	    }
 	}
     }
+    
 
     public int getSize(final Class<?> cls, final Result result) {
-	return results.get(cls).get(result).size();
+	return this.results.get(cls).get(result).size();
     }
 }
